@@ -1,4 +1,4 @@
-use day1::larger;
+use day1::{larger, larger_v2};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -11,5 +11,6 @@ fn main() {
         data.push(line.parse().unwrap());
     }
 
-    println!("Result is {}", larger(data));
+    println!("Result is {}", larger(data.clone()));
+    println!("Result for part2 is {}", larger_v2(data));
 }
