@@ -5,6 +5,7 @@ use std::ops::Add;
 pub struct SubmarinePos {
     horizontal: i64,
     depth: i64,
+    aim: i64,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -14,8 +15,25 @@ pub enum SubmarinePosError {
 }
 
 impl SubmarinePos {
-    pub fn new(horizontal: i64, depth: i64) -> Self {
-        SubmarinePos { horizontal, depth }
+    pub fn new(horizontal: i64, depth: i64, aim: i64) -> Self {
+        SubmarinePos { horizontal, depth, aim }
+    }
+
+    pub fn update(self, value: &str) -> Result<SubmarinePos, SubmarinePosError> {
+        let mut sp = value.split(' ');
+
+        match (sp.next(), sp.next()) {
+            (Some("forward"), Some(x)) => {
+                Ok(SubmarinePos::new(self.horizontal + x.parse::<i64>()?, self.depth + x.parse::<i64>()? * self.aim, self.aim))
+            },
+            (Some("down"), Some(aim)) => {
+                Ok(SubmarinePos::new(self.horizontal, self.depth, self.aim + aim.parse::<i64>()?))
+            },
+            (Some("up"), Some(aim)) => {
+                Ok(SubmarinePos::new(self.horizontal, self.depth, self.aim - aim.parse::<i64>()?))
+            },
+            (_, _) => Err(SubmarinePosError::ParseError),
+        }
     }
 }
 
@@ -31,6 +49,7 @@ impl Add for SubmarinePos {
         SubmarinePos {
             horizontal: self.horizontal + rhs.horizontal,
             depth: self.depth + rhs.depth,
+            aim: self.aim + rhs.aim,
         }
     }
 }
@@ -41,9 +60,9 @@ impl TryFrom<&str> for SubmarinePos {
         let mut sp = value.split(' ');
 
         match (sp.next(), sp.next()) {
-            (Some("forward"), Some(horizontal)) => Ok(SubmarinePos::new(horizontal.parse::<i64>()?, 0)),
-            (Some("down"), Some(depth)) => Ok(SubmarinePos::new(0, depth.parse::<i64>()?)),
-            (Some("up"), Some(depth)) => Ok(SubmarinePos::new(0, -depth.parse::<i64>()?)),
+            (Some("forward"), Some(horizontal)) => Ok(SubmarinePos::new(horizontal.parse::<i64>()?, 0, 0)),
+            (Some("down"), Some(aim)) => Ok(SubmarinePos::new(0, 0, aim.parse::<i64>()?)),
+            (Some("up"), Some(aim)) => Ok(SubmarinePos::new(0, 0, -aim.parse::<i64>()?)),
             (_, _) => Err(SubmarinePosError::ParseError),
         }
     }
@@ -62,18 +81,18 @@ mod tests {
                          "down 8",
                          "forward 2"];
 
-        let result  = input.into_iter().
-            map(|line| SubmarinePos::try_from(line).unwrap() )
-            .fold(SubmarinePos::new(0,0), |acc, val| acc + val );
+        let mut it  = input.into_iter();
+        let spos = SubmarinePos::try_from(it.next().unwrap()).unwrap();
+        let result = it.fold(spos, |acc, val| acc.update(val).unwrap());
 
-        assert_eq!(result, SubmarinePos{horizontal: 15, depth: 10});
+        assert_eq!(result, SubmarinePos{horizontal: 15, depth: 60, aim: 10});
     }
 
     #[test]
     fn from_string() {
-        assert_eq!(SubmarinePos::try_from("forward 5"), Ok(SubmarinePos{horizontal: 5, depth: 0}));
-        assert_eq!(SubmarinePos::try_from("down 10"), Ok(SubmarinePos{horizontal: 0, depth: 10}));
-        assert_eq!(SubmarinePos::try_from("up 10"), Ok(SubmarinePos{horizontal: 0, depth: -10}));
+        assert_eq!(SubmarinePos::try_from("forward 5"), Ok(SubmarinePos{horizontal: 5, depth: 0, aim: 0}));
+        assert_eq!(SubmarinePos::try_from("down 10"), Ok(SubmarinePos{horizontal: 0, depth: 0, aim: 10}));
+        assert_eq!(SubmarinePos::try_from("up 10"), Ok(SubmarinePos{horizontal: 0, depth: 0, aim: -10}));
 
         assert_eq!(SubmarinePos::try_from("alskdjflksd 10"), Err(SubmarinePosError::ParseError));
         assert_eq!(SubmarinePos::try_from("forward"), Err(SubmarinePosError::ParseError));
