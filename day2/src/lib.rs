@@ -14,7 +14,7 @@ pub enum SubmarinePosError {
 }
 
 impl SubmarinePos {
-    fn new(horizontal: i64, depth: i64) -> Self {
+    pub fn new(horizontal: i64, depth: i64) -> Self {
         SubmarinePos { horizontal, depth }
     }
 }
