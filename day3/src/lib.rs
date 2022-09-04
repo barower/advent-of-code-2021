@@ -38,12 +38,62 @@ struct SingleBitCounter {
     zeros: u64,
 }
 
+pub fn oxygen_gen_rating(indata: &Vec<&str>) -> Result<u64, Box<dyn std::error::Error>> {
+    let mut filtered_data = indata.clone();
+
+    for (i, _) in indata[0].chars().enumerate() {
+        let mut bc = BitCounter::new(indata[0].len());
+
+        for line in &filtered_data {
+            bc.update(line);
+        }
+
+        if bc.0[i].ones >= bc.0[i].zeros {
+            filtered_data = filtered_data.iter().filter(|&line| line.chars().nth(i) == Some('1')).cloned().collect();
+        } else {
+            filtered_data = filtered_data.iter().filter(|&line| line.chars().nth(i) == Some('0')).cloned().collect();
+        }
+
+        if filtered_data.len() == 1 {
+            return Ok(u64::from_str_radix(filtered_data[0], 2)?);
+        }
+
+    }
+
+    Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, "")))
+}
+
+pub fn co2_scrubber_rating(indata: &Vec<&str>) -> Result<u64, Box<dyn std::error::Error>> {
+    let mut filtered_data = indata.clone();
+
+    for (i, _) in indata[0].chars().enumerate() {
+        let mut bc = BitCounter::new(indata[0].len());
+
+        for line in &filtered_data {
+            bc.update(line);
+        }
+
+        if bc.0[i].ones < bc.0[i].zeros {
+            filtered_data = filtered_data.iter().filter(|&line| line.chars().nth(i) == Some('1')).cloned().collect();
+        } else {
+            filtered_data = filtered_data.iter().filter(|&line| line.chars().nth(i) == Some('0')).cloned().collect();
+        }
+
+        if filtered_data.len() == 1 {
+            return Ok(u64::from_str_radix(filtered_data[0], 2)?);
+        }
+
+    }
+
+    Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, "")))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn example() {
+    fn part1() {
         let indata = vec!["00100",
                           "11110",
                           "10110",
@@ -73,5 +123,26 @@ mod tests {
         assert_eq!(bc.epsilon_rate(), 9);
 
         assert_eq!(bc.power_consumption(), 198);
+    }
+
+    #[test]
+    fn part2() -> Result<(), Box<dyn std::error::Error>>{
+        let indata = vec!["00100",
+                          "11110",
+                          "10110",
+                          "10111",
+                          "10101",
+                          "01111",
+                          "00111",
+                          "11100",
+                          "10000",
+                          "11001",
+                          "00010",
+                          "01010"];
+
+        assert_eq!(oxygen_gen_rating(&indata)?, 23);
+        assert_eq!(co2_scrubber_rating(&indata)?, 10);
+
+        Ok(())
     }
 }
