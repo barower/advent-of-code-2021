@@ -60,7 +60,7 @@ impl Player {
         (0..BINGO_BOARD_SIZE).map(|row| (row, col)).all(|pair| self.marked.contains(&pair))
     }
 
-    fn sum_of_unmarked(&self) -> u64 {
+    pub fn sum_of_unmarked(&self) -> u64 {
         let mut sum: u64 = 0;
         for (i, row) in self.board.iter().enumerate() {
             for (j, val) in row.iter().enumerate() {
@@ -94,8 +94,8 @@ impl Game {
         Game { players: vec![], draws: draws.into(), }
     }
 
-    pub fn add_player(&mut self, board: [[u64; BINGO_BOARD_SIZE]; BINGO_BOARD_SIZE]) {
-        self.players.push(Player::new(board));
+    pub fn add_player(&mut self, player: Player) {
+        self.players.push(player);
     }
 
     pub fn play(&mut self) -> Result<Option<(u64, Player)>, GameError> {
@@ -236,23 +236,23 @@ mod tests {
     fn part1() {
         let mut game = Game::new(vec![7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1]);
 
-        game.add_player([[22, 13, 17, 11, 0],
-                         [8,  2,  23, 4,  24],
-                         [21, 9,  14, 16, 7],
-                         [6,  10, 3,  18, 5],
-                         [1,  12, 20, 15, 19]]);
+        game.add_player(Player::new([[22, 13, 17, 11, 0],
+                                     [8,  2,  23, 4,  24],
+                                     [21, 9,  14, 16, 7],
+                                     [6,  10, 3,  18, 5],
+                                     [1,  12, 20, 15, 19]]));
 
-        game.add_player([[3, 15,  0,  2, 22],
-                         [9, 18, 13, 17,  5],
-                         [19,  8,  7, 25, 23],
-                         [20, 11, 10, 24,  4],
-                         [14, 21, 16, 12,  6]]);
+        game.add_player(Player::new([[3, 15,  0,  2, 22],
+                                     [9, 18, 13, 17,  5],
+                                     [19,  8,  7, 25, 23],
+                                     [20, 11, 10, 24,  4],
+                                     [14, 21, 16, 12,  6]]));
 
-        game.add_player([[14, 21, 17, 24,  4],
-                         [10, 16, 15,  9, 19],
-                         [18,  8, 23, 26, 20],
-                         [22, 11, 13,  6,  5],
-                         [ 2,  0, 12,  3,  7]]);
+        game.add_player(Player::new([[14, 21, 17, 24,  4],
+                                     [10, 16, 15,  9, 19],
+                                     [18,  8, 23, 26, 20],
+                                     [22, 11, 13,  6,  5],
+                                     [ 2,  0, 12,  3,  7]]));
 
         let (winning_draw, winner) = game.play().unwrap().unwrap();
         assert_eq!(winner.board[0][0], 14);

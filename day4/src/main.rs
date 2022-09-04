@@ -2,8 +2,9 @@ use day4::Game;
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::str::FromStr;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>>{
     let mut data: Vec<String> = vec![];
 
     let file = File::open("inputfile").expect("Failed to find file with input data");
@@ -11,4 +12,24 @@ fn main() {
     for line in reader.lines().flatten() {
         data.push(line.parse().unwrap());
     }
+
+    let mut it = data.into_iter();
+
+    let draws = it.next().unwrap();
+    let mut game: Game = FromStr::from_str(draws.as_ref())?;
+
+    loop {
+        if it.next().is_none() {
+            break;
+        }
+
+        let board: String = it.by_ref().take(5).map(|mut s| { s.push('\n'); s} ).collect();
+        game.add_player(FromStr::from_str(board.as_ref())?);
+    }
+
+    let (winning_draw, winner) = game.play().unwrap().unwrap();
+    println!("Winning draw: {winning_draw}");
+    println!("Sum of unmarked numbers: {}", winner.sum_of_unmarked());
+
+    Ok(())
 }
