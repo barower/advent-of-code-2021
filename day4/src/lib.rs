@@ -14,7 +14,7 @@ pub enum GameError {
 pub struct Player {
     board: [[u64; BINGO_BOARD_SIZE]; BINGO_BOARD_SIZE],
     // Vector of marked board indexes
-    marked: Vec<(usize,usize)>,
+    pub marked: Vec<(usize,usize)>,
 }
 
 impl Player {
@@ -98,16 +98,26 @@ impl Game {
         self.players.push(player);
     }
 
-    pub fn play(&mut self) -> Result<Option<(u64, Player)>, GameError> {
+    fn try_pop_winner(&mut self) -> Option<Player> {
+        if let Some(winning_index) = self.players.iter().position(|player| player.check_bingo()) {
+            Some(self.players.remove(winning_index))
+        } else {
+            None
+        }
+    }
+
+    pub fn get_next_winner(&mut self) -> Result<Option<(u64, Player)>, GameError> {
         while !self.draws.is_empty() {
             let draw = self.draws.pop_front().ok_or(GameError::NoDrawsLeft)?;
 
             for player in &mut self.players {
                 player.handle_new_draw(draw);
-                if player.check_bingo() {
-                    return Ok(Some((draw, player.to_owned())));
-                }
             }
+
+            if let Some(winner) = self.try_pop_winner() {
+                return Ok(Some((draw, winner)));
+            }
+
         }
         Ok(None)
     }
@@ -233,7 +243,7 @@ mod tests {
 
 
     #[test]
-    fn part1() {
+    fn game_next_winner() {
         let mut game = Game::new(vec![7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1]);
 
         game.add_player(Player::new([[22, 13, 17, 11, 0],
@@ -254,9 +264,15 @@ mod tests {
                                      [22, 11, 13,  6,  5],
                                      [ 2,  0, 12,  3,  7]]));
 
-        let (winning_draw, winner) = game.play().unwrap().unwrap();
+        let (winning_draw, winner) = game.get_next_winner().unwrap().unwrap();
         assert_eq!(winner.board[0][0], 14);
         assert_eq!(winning_draw, 24);
         assert!(winner.marked.contains(&(1,3)));
+
+        let (_, _) = game.get_next_winner().unwrap().unwrap();
+
+        let (last_winning_draw, last_winner) = game.get_next_winner().unwrap().unwrap();
+        assert_eq!(last_winning_draw, 13);
+        assert_eq!(last_winner.sum_of_unmarked(), 148);
     }
 }
