@@ -27,13 +27,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         game.add_player(FromStr::from_str(board.as_ref())?);
     }
 
-    let (winning_draw, winner) = game.get_next_winner().unwrap().unwrap();
+    let (winning_draw, winners) = game.get_next_winners().unwrap().unwrap();
     println!("Winning draw: {winning_draw}");
-    println!("Sum of first winner's unmarked numbers: {}", winner.sum_of_unmarked());
+    println!("Sum of first winner's unmarked numbers: {}", winners[0].sum_of_unmarked());
 
-    while let Some((next_winning_draw, next_winner)) = game.get_next_winner().unwrap() {
+    while let Some((next_winning_draw, next_winners)) = game.get_next_winners().unwrap() {
         println!("Next winning draw: {next_winning_draw}");
-        println!("Sum of next winner's unmarked numbers: {}", next_winner.sum_of_unmarked());
+        println!("Sum of next winner's unmarked numbers: {}", next_winners[0].sum_of_unmarked());
     }
 
     Ok(())

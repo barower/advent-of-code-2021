@@ -98,15 +98,17 @@ impl Game {
         self.players.push(player);
     }
 
-    fn try_pop_winner(&mut self) -> Option<Player> {
-        if let Some(winning_index) = self.players.iter().position(|player| player.check_bingo()) {
-            Some(self.players.remove(winning_index))
-        } else {
-            None
+    fn try_pop_winners(&mut self) -> Vec<Player> {
+        let mut winners: Vec<Player> = vec![];
+
+        while let Some(winning_index) = self.players.iter().position(|player| player.check_bingo()) {
+            winners.push(self.players.remove(winning_index));
         }
+
+        winners
     }
 
-    pub fn get_next_winner(&mut self) -> Result<Option<(u64, Player)>, GameError> {
+    pub fn get_next_winners(&mut self) -> Result<Option<(u64, Vec<Player>)>, GameError> {
         while !self.draws.is_empty() {
             let draw = self.draws.pop_front().ok_or(GameError::NoDrawsLeft)?;
 
@@ -114,8 +116,9 @@ impl Game {
                 player.handle_new_draw(draw);
             }
 
-            if let Some(winner) = self.try_pop_winner() {
-                return Ok(Some((draw, winner)));
+            let winners = self.try_pop_winners();
+            if !winners.is_empty() {
+                return Ok(Some((draw, winners)));
             }
 
         }
@@ -264,15 +267,54 @@ mod tests {
                                      [22, 11, 13,  6,  5],
                                      [ 2,  0, 12,  3,  7]]));
 
-        let (winning_draw, winner) = game.get_next_winner().unwrap().unwrap();
-        assert_eq!(winner.board[0][0], 14);
+        let (winning_draw, winners) = game.get_next_winners().unwrap().unwrap();
+        assert_eq!(winners.len(), 1);
+        assert_eq!(winners[0].board[0][0], 14);
         assert_eq!(winning_draw, 24);
-        assert!(winner.marked.contains(&(1,3)));
+        assert!(winners[0].marked.contains(&(1,3)));
 
-        let (_, _) = game.get_next_winner().unwrap().unwrap();
+        let (_, _) = game.get_next_winners().unwrap().unwrap();
 
-        let (last_winning_draw, last_winner) = game.get_next_winner().unwrap().unwrap();
+        let (last_winning_draw, last_winners) = game.get_next_winners().unwrap().unwrap();
         assert_eq!(last_winning_draw, 13);
-        assert_eq!(last_winner.sum_of_unmarked(), 148);
+        assert_eq!(last_winners[0].sum_of_unmarked(), 148);
+        assert_eq!(last_winners.len(), 1);
+    }
+
+    #[test]
+    fn multiple_winners_at_once() {
+        let mut game = Game::new(vec![7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1]);
+
+        game.add_player(Player::new([[22, 13, 17, 11, 0],
+                                     [8,  2,  23, 4,  24],
+                                     [21, 9,  14, 16, 7],
+                                     [6,  10, 3,  18, 5],
+                                     [1,  12, 20, 15, 19]]));
+
+        // Same board as first
+        game.add_player(Player::new([[22, 13, 17, 11, 0],
+                                     [8,  2,  23, 4,  24],
+                                     [21, 9,  14, 16, 7],
+                                     [6,  10, 3,  18, 5],
+                                     [1,  12, 20, 15, 19]]));
+
+        game.add_player(Player::new([[3, 15,  0,  2, 22],
+                                     [9, 18, 13, 17,  5],
+                                     [19,  8,  7, 25, 23],
+                                     [20, 11, 10, 24,  4],
+                                     [14, 21, 16, 12,  6]]));
+
+        game.add_player(Player::new([[14, 21, 17, 24,  4],
+                                     [10, 16, 15,  9, 19],
+                                     [18,  8, 23, 26, 20],
+                                     [22, 11, 13,  6,  5],
+                                     [ 2,  0, 12,  3,  7]]));
+
+        let (_, _) = game.get_next_winners().unwrap().unwrap();
+
+        let (_, two_winners) = game.get_next_winners().unwrap().unwrap();
+        assert_eq!(two_winners.len(), 2);
+
+        let (_, _) = game.get_next_winners().unwrap().unwrap();
     }
 }
