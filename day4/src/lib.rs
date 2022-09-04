@@ -11,7 +11,7 @@ pub enum GameError {
 }
 
 #[derive(Clone, Debug)]
-struct Player {
+pub struct Player {
     board: [[u64; BINGO_BOARD_SIZE]; BINGO_BOARD_SIZE],
     // Vector of marked board indexes
     marked: Vec<(usize,usize)>,
@@ -73,7 +73,18 @@ impl Player {
     }
 }
 
-struct Game {
+impl std::str::FromStr for Player {
+    type Err = std::num::ParseIntError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut board: [[u64; BINGO_BOARD_SIZE]; BINGO_BOARD_SIZE] = [[0; BINGO_BOARD_SIZE]; BINGO_BOARD_SIZE];
+        for (row, line) in s.lines().enumerate() {
+            board[row] = line.split_whitespace().map(|s| s.parse::<u64>().unwrap()).collect::<Vec<u64>>().try_into().unwrap();
+        }
+        Ok(Player::new(board))
+    }
+}
+
+pub struct Game {
     players: Vec<Player>,
     draws: VecDeque<u64>,
 }
@@ -102,9 +113,39 @@ impl Game {
     }
 }
 
+impl std::str::FromStr for Game {
+    type Err = std::num::ParseIntError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let draws = s.split(',').map(|s| s.parse::<u64>().unwrap()).collect();
+        Ok(Game::new(draws))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn game_from_str() -> Result<(), Box<dyn std::error::Error>> {
+        let input: String = "21,37,09,43,56".to_string();
+        let game: Game = std::str::FromStr::from_str(&input)?;
+        assert_eq!(game.draws[2], 9);
+        Ok(())
+    }
+
+    #[test]
+    fn player_from_str() -> Result<(), Box<dyn std::error::Error>> {
+        let input: String = "22 13 17 11  0
+8  2 23  4 24
+21  9 14 16  7
+6 10  3 18  5
+1 12 20 15 19".to_string();
+
+        let player: Player = std::str::FromStr::from_str(&input)?;
+        assert_eq!(player.board[0][1], 13);
+        assert_eq!(player.board[2][2], 14);
+        Ok(())
+    }
 
     #[test]
     fn single_player_draw() {
