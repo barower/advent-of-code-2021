@@ -109,14 +109,14 @@ impl Iterator for LineIter {
         if self.points_left > 0 {
             let to_return = self.current;
 
-            self.points_left -= 1;
             self.current = match self.direction {
                 LineDirection::Up => (self.current.0, self.current.1-1),
                 LineDirection::Down => (self.current.0, self.current.1+1),
                 LineDirection::Left => (self.current.0-1, self.current.1),
                 LineDirection::Right => (self.current.0+1, self.current.1),
-                LineDirection::Other => (self.current.0, self.current.1),
+                LineDirection::Other => { return None; },
             };
+            self.points_left -= 1;
 
             Some(to_return)
         } else {
@@ -190,10 +190,13 @@ mod tests {
 
     #[test]
     fn line_iter() {
-        let mut iter = LineIter{current:(5,5), points_left: 3, direction: LineDirection::Up};
-        assert_eq!(iter.next(), Some((5,5)));
-        assert_eq!(iter.next(), Some((5,4)));
-        assert_eq!(iter.next(), Some((5,3)));
-        assert_eq!(iter.next(), None);
+        let mut up_iter = LineIter{current:(5,5), points_left: 3, direction: LineDirection::Up};
+        assert_eq!(up_iter.next(), Some((5,5)));
+        assert_eq!(up_iter.next(), Some((5,4)));
+        assert_eq!(up_iter.next(), Some((5,3)));
+        assert_eq!(up_iter.next(), None);
+
+        let mut diagonal_iter = LineIter{current:(5,5), points_left: 5, direction: LineDirection::Other};
+        assert_eq!(diagonal_iter.next(), None);
     }
 }
