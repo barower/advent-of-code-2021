@@ -102,30 +102,34 @@ mod tests {
         let line = line::Line::new((1,1), (5,5));
         let map = ThermalMap::new(vec![line]);
 
-        for i in 0..=5 {
-            for j in 0..=5 {
-                assert_eq!(map.at(i,j), 0);
-            }
-        }
+        assert_eq!(map.at(1,1), 1);
+        assert_eq!(map.at(2,2), 1);
+        assert_eq!(map.at(3,3), 1);
+        assert_eq!(map.at(4,4), 1);
+        assert_eq!(map.at(5,5), 1);
+
+        assert_eq!(map.at(0,1), 0);
+        assert_eq!(map.at(1,2), 0);
+        assert_eq!(map.at(2,3), 0);
+        assert_eq!(map.at(3,4), 0);
+        assert_eq!(map.at(4,5), 0);
+
     }
 
     #[test]
     fn thermal_map_multiple_lines_with_diagonals() {
-        let line0 = line::Line::new((4,4), (6,4));
-        let line1 = line::Line::new((5,3), (5,6));
-        let line2 = line::Line::new((1,1), (5,5));
+        let line0 = line::Line::new((0,1), (2,1));
+        let line1 = line::Line::new((1,0), (1,2));
+        let line2 = line::Line::new((0,0), (2,2));
         let map = ThermalMap::new(vec![line0, line1, line2]);
 
-        assert_eq!(map.at(4,4), 1);
-        assert_eq!(map.at(5,4), 2);
-        assert_eq!(map.at(6,4), 1);
+        assert_eq!(map.at(1,1), 3);
 
-        assert_eq!(map.at(5,3), 1);
-        assert_eq!(map.at(5,6), 1);
+        assert_eq!(map.at(0,1), 1);
+        assert_eq!(map.at(2,1), 1);
 
-        assert_eq!(map.at(3,4), 0);
-        assert_eq!(map.at(0,0), 0);
-        assert_eq!(map.at(6,0), 0);
+        assert_eq!(map.at(1,0), 1);
+        assert_eq!(map.at(1,2), 1);
     }
 
     //#[test]
@@ -136,13 +140,12 @@ mod tests {
 
     #[test]
     fn thermal_map_overlaps() {
-        let line0 = line::Line::new((4,4), (6,4));
-        let line1 = line::Line::new((5,3), (5,6));
-        let line2 = line::Line::new((1,1), (5,5));
-        let line3 = line::Line::new((5,6), (5,8));
-        let map = ThermalMap::new(vec![line0, line1, line2, line3]);
+        let line0 = line::Line::new((0,1), (2,1));
+        let line1 = line::Line::new((1,0), (1,2));
+        let line2 = line::Line::new((0,0), (2,2));
+        let map = ThermalMap::new(vec![line0, line1, line2]);
 
-        assert_eq!(map.overlaps(), vec![(5,4), (5,6)])
+        assert_eq!(map.overlaps(), vec![(1,1)]);
     }
 
 }

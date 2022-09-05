@@ -28,6 +28,10 @@ impl Line {
         self.start.0 == self.end.0
     }
 
+    fn is_45_degrees(&self) -> bool {
+        self.start.0.abs_diff(self.end.0) == self.start.1.abs_diff(self.end.1)
+    }
+
     fn direction(&self) -> LineDirection {
         if self.is_horizontal() {
             if self.start.0 < self.end.0 {
@@ -40,6 +44,14 @@ impl Line {
                 LineDirection::Up
             } else {
                 LineDirection::Down
+            }
+        } else if self.is_45_degrees() {
+            match (self.start.0, self.start.1, self.end.0, self.end.1) {
+                (x0, y0, x1, y1) if x0 < x1 && y0 < y1 => LineDirection::DownRight,
+                (x0, y0, x1, y1) if x0 > x1 && y0 < y1 => LineDirection::DownLeft,
+                (x0, y0, x1, y1) if x0 < x1 && y0 > y1 => LineDirection::UpRight,
+                (x0, y0, x1, y1) if x0 > x1 && y0 > y1 => LineDirection::UpLeft,
+                _ => LineDirection::Other,
             }
         } else {
             LineDirection::Other
@@ -59,6 +71,8 @@ impl Line {
             self.start.0.abs_diff(self.end.0) + 1
         } else if self.is_vertical() {
             self.start.1.abs_diff(self.end.1) + 1
+        } else if self.is_45_degrees() {
+            self.start.0.abs_diff(self.end.0) + 1
         } else { 0 };
 
         LineIter{
@@ -92,6 +106,10 @@ enum LineDirection {
     Down,
     Left,
     Right,
+    UpRight,
+    UpLeft,
+    DownRight,
+    DownLeft,
     Other,
 }
 
@@ -114,7 +132,13 @@ impl Iterator for LineIter {
                 LineDirection::Down => (self.current.0, self.current.1+1),
                 LineDirection::Left => (self.current.0-1, self.current.1),
                 LineDirection::Right => (self.current.0+1, self.current.1),
-                LineDirection::Other => { return None; },
+
+                LineDirection::UpRight => (self.current.0+1, self.current.1-1),
+                LineDirection::UpLeft => (self.current.0-1, self.current.1-1),
+                LineDirection::DownRight => (self.current.0+1, self.current.1+1),
+                LineDirection::DownLeft => (self.current.0-1, self.current.1+1),
+
+                _ => { return None; },
             };
             self.points_left -= 1;
 
@@ -157,12 +181,27 @@ mod tests {
     }
 
     #[test]
+    fn line_45_degrees() {
+        assert!(!Line{start: (15,15), end: (18,15)}.is_45_degrees());
+        assert!(Line{start: (15,15), end: (15,15)}.is_45_degrees());
+        assert!(Line{start: (15,15), end: (20,20)}.is_45_degrees());
+        assert!(Line{start: (20,20), end: (15,15)}.is_45_degrees());
+        assert!(Line{start: (5,0), end: (0,5)}.is_45_degrees());
+    }
+
+    #[test]
     fn line_direction() {
         assert_eq!(Line{start: (15,15), end: (18,15)}.direction(), LineDirection::Right);
         assert_eq!(Line{start: (18,15), end: (15,15)}.direction(), LineDirection::Left);
         assert_eq!(Line{start: (15,15), end: (15,10)}.direction(), LineDirection::Up);
         assert_eq!(Line{start: (15,10), end: (15,15)}.direction(), LineDirection::Down);
-        assert_eq!(Line{start: (10,10), end: (15,15)}.direction(), LineDirection::Other);
+
+        assert_eq!(Line{start: (10,10), end: (15,15)}.direction(), LineDirection::DownRight);
+        assert_eq!(Line{start: (15,15), end: (10,10)}.direction(), LineDirection::UpLeft);
+        assert_eq!(Line{start: (0,5), end: (5,0)}.direction(), LineDirection::UpRight);
+        assert_eq!(Line{start: (5,0), end: (0,5)}.direction(), LineDirection::DownLeft);
+
+        assert_eq!(Line{start: (10,10), end: (15,16)}.direction(), LineDirection::Other);
     }
 
     #[test]
@@ -186,6 +225,27 @@ mod tests {
             Line{start: (15,10), end: (15,15)}.points(),
             LineIter{ current: (15,10), points_left: 6, direction: LineDirection::Down}
         );
+
+        assert_eq!(
+            Line{start: (10,10), end: (15,15)}.points(),
+            LineIter{ current: (10,10), points_left: 6, direction: LineDirection::DownRight },
+        );
+
+        assert_eq!(
+            Line{start: (15,15), end: (10,10)}.points(),
+            LineIter{ current: (15,15), points_left: 6, direction: LineDirection::UpLeft },
+        );
+
+        assert_eq!(
+            Line{start: (0,5), end: (5,0)}.points(),
+            LineIter{ current: (0,5), points_left: 6, direction: LineDirection::UpRight },
+        );
+
+        assert_eq!(
+            Line{start: (5,0), end: (0,5)}.points(),
+            LineIter{ current: (5,0), points_left: 6, direction: LineDirection::DownLeft },
+        );
+
     }
 
     #[test]
@@ -196,7 +256,11 @@ mod tests {
         assert_eq!(up_iter.next(), Some((5,3)));
         assert_eq!(up_iter.next(), None);
 
-        let mut diagonal_iter = LineIter{current:(5,5), points_left: 5, direction: LineDirection::Other};
+        let mut diagonal_iter = LineIter{current:(1,1), points_left: 4, direction: LineDirection::DownRight};
+        assert_eq!(diagonal_iter.next(), Some((1,1)));
+        assert_eq!(diagonal_iter.next(), Some((2,2)));
+        assert_eq!(diagonal_iter.next(), Some((3,3)));
+        assert_eq!(diagonal_iter.next(), Some((4,4)));
         assert_eq!(diagonal_iter.next(), None);
     }
 }
