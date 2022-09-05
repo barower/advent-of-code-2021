@@ -1,13 +1,13 @@
-mod line;
+pub mod line;
 
-use std::fmt::{Display, Formatter};
+//use std::fmt::{Display, Formatter};
 
 use line::*;
 
-struct ThermalMap(Vec<Vec<u64>>);
+pub struct ThermalMap(Vec<Vec<u64>>);
 
 impl ThermalMap {
-    fn new(lines: Vec<Line>) -> Self {
+    pub fn new(lines: Vec<Line>) -> Self {
         let furthest_x: usize = lines.iter().fold(0, |max, line| if line.furthest_x() > max { line.furthest_x() } else { max });
         let furthest_y: usize = lines.iter().fold(0, |max, line| if line.furthest_y() > max { line.furthest_y() } else { max });
 
@@ -30,7 +30,7 @@ impl ThermalMap {
         self.0[y][x]
     }
 
-    fn overlaps(&self) -> Vec<(usize, usize)> {
+    pub fn overlaps(&self) -> Vec<(usize, usize)> {
         let mut retvec = vec![];
 
         for (y, col) in self.0.iter().enumerate() {
