@@ -1,6 +1,7 @@
 use thiserror::Error;
 use std::str::FromStr;
 
+
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum LineError {
@@ -27,12 +28,44 @@ impl Line {
         self.start.0 == self.end.0
     }
 
+    fn direction(&self) -> LineDirection {
+        if self.is_horizontal() {
+            if self.start.0 < self.end.0 {
+                LineDirection::Right
+            } else {
+                LineDirection::Left
+            }
+        } else if self.is_vertical() {
+            if self.start.1 > self.end.1 {
+                LineDirection::Up
+            } else {
+                LineDirection::Down
+            }
+        } else {
+            LineDirection::Other
+        }
+    }
+
     pub fn furthest_x(&self) -> usize {
         self.start.0.max(self.end.0)
     }
 
     pub fn furthest_y(&self) -> usize {
         self.start.1.max(self.end.1)
+    }
+
+    pub fn points(&self) -> LineIter {
+        let points_left = if self.is_horizontal() {
+            self.start.0.abs_diff(self.end.0) + 1
+        } else if self.is_vertical() {
+            self.start.1.abs_diff(self.end.1) + 1
+        } else { 0 };
+
+        LineIter{
+            current: self.start,
+            points_left,
+            direction: self.direction(),
+        }
     }
 }
 
@@ -53,17 +86,43 @@ impl FromStr for Line {
     }
 }
 
-enum LineIterDirection {
+#[derive(Debug, PartialEq, Eq)]
+enum LineDirection {
     Up,
     Down,
     Left,
     Right,
+    Other,
 }
 
-struct LineIter {
-    start: (usize, usize),
-    points_lefs: usize,
-    direction: LineIterDirection,
+#[derive(Debug, PartialEq, Eq)]
+pub struct LineIter {
+    current: (usize, usize),
+    points_left: usize,
+    direction: LineDirection,
+}
+
+impl Iterator for LineIter {
+    type Item = (usize, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.points_left > 0 {
+            let to_return = self.current;
+
+            self.points_left -= 1;
+            self.current = match self.direction {
+                LineDirection::Up => (self.current.0, self.current.1-1),
+                LineDirection::Down => (self.current.0, self.current.1+1),
+                LineDirection::Left => (self.current.0-1, self.current.1),
+                LineDirection::Right => (self.current.0+1, self.current.1),
+                LineDirection::Other => (self.current.0, self.current.1),
+            };
+
+            Some(to_return)
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -97,5 +156,44 @@ mod tests {
         assert!(!Line{start: (15,15), end: (18,18)}.is_vertical());
     }
 
+    #[test]
+    fn line_direction() {
+        assert_eq!(Line{start: (15,15), end: (18,15)}.direction(), LineDirection::Right);
+        assert_eq!(Line{start: (18,15), end: (15,15)}.direction(), LineDirection::Left);
+        assert_eq!(Line{start: (15,15), end: (15,10)}.direction(), LineDirection::Up);
+        assert_eq!(Line{start: (15,10), end: (15,15)}.direction(), LineDirection::Down);
+        assert_eq!(Line{start: (10,10), end: (15,15)}.direction(), LineDirection::Other);
+    }
 
+    #[test]
+    fn line_create_iter() {
+        assert_eq!(
+            Line{start: (15,15), end: (18,15)}.points(),
+            LineIter{ current: (15,15), points_left: 4, direction: LineDirection::Right}
+        );
+
+        assert_eq!(
+            Line{start: (18,15), end: (15,15)}.points(),
+            LineIter{ current: (18,15), points_left: 4, direction: LineDirection::Left}
+        );
+
+        assert_eq!(
+            Line{start: (15,15), end: (15,10)}.points(),
+            LineIter{ current: (15,15), points_left: 6, direction: LineDirection::Up}
+        );
+
+        assert_eq!(
+            Line{start: (15,10), end: (15,15)}.points(),
+            LineIter{ current: (15,10), points_left: 6, direction: LineDirection::Down}
+        );
+    }
+
+    #[test]
+    fn line_iter() {
+        let mut iter = LineIter{current:(5,5), points_left: 3, direction: LineDirection::Up};
+        assert_eq!(iter.next(), Some((5,5)));
+        assert_eq!(iter.next(), Some((5,4)));
+        assert_eq!(iter.next(), Some((5,3)));
+        assert_eq!(iter.next(), None);
+    }
 }
