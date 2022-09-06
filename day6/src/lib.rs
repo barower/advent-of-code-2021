@@ -33,8 +33,16 @@ impl Iterator for Fishes {
     }
 }
 
+pub fn bench_function() -> Result<(), Box<dyn std::error::Error>> {
+    let input = "3,4,3,1,2";
+    let fishes: Fishes = Fishes::from_str(input)?;
+    assert_eq!(fishes.skip(100).take(1).next().unwrap().len(), 36920);
+
+    Ok(())
+}
+
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
     #[test]
