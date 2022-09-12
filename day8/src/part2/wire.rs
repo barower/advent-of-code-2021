@@ -1,5 +1,6 @@
 use thiserror::Error;
 use std::str::FromStr;
+use std::ops::{Add, Sub};
 
 #[derive(Error, Debug)]
 #[non_exhaustive]
@@ -12,7 +13,7 @@ pub enum Part2Error {
     ValueNotFound,
 }
 
-#[derive(Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Eq, PartialEq, Hash, Ord, PartialOrd, Debug)]
 pub struct Wire(char);
 
 impl TryFrom<char> for Wire {
@@ -26,7 +27,7 @@ impl TryFrom<char> for Wire {
     }
 }
 
-#[derive(Eq, PartialEq, Hash)]
+#[derive(Eq, PartialEq, Hash, Debug)]
 pub struct Wires(Vec<Wire>);
 
 impl Wires {
@@ -41,11 +42,56 @@ impl FromStr for Wires {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut wires = s.chars().map(Wire::try_from).collect::<Result<Vec<_>, _>>()?;
         wires.sort();
+        wires.dedup();
 
         Ok(Wires(wires))
     }
 }
 
+impl Add<Wires> for Wires {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let mut wires = self.0.into_iter().chain(rhs.0.into_iter()).collect::<Vec<_>>();
+        wires.sort();
+        wires.dedup();
+
+        Wires(wires)
+    }
+}
+
+impl Sub<Wires> for Wires {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        let mut ret = self;
+        ret.0.retain(|elem| !rhs.0.contains(elem));
+        ret
+    }
+}
+
+impl Add<Wire> for Wires {
+    type Output = Self;
+
+    fn add(self, rhs: Wire) -> Self::Output {
+        let mut ret = self;
+        ret.0.push(rhs);
+        ret.0.sort();
+        ret.0.dedup();
+
+        ret
+    }
+}
+
+impl Sub<Wire> for Wires {
+    type Output = Self;
+
+    fn sub(self, rhs: Wire) -> Self::Output {
+        let mut ret = self;
+        ret.0.retain(|elem| elem != &rhs);
+        ret
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -78,6 +124,14 @@ mod tests {
     }
 
     #[test]
+    fn wires_from_empty() -> Result<(), Box<dyn std::error::Error>> {
+        let wires = Wires::from_str("")?;
+        assert_eq!(wires.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
     fn wires_from_sorted() -> Result<(), Box<dyn std::error::Error>> {
         let wires = Wires::from_str("cafbdeg")?;
         assert_eq!(wires.0.iter().map(|w| w.0).collect::<String>(), "abcdefg");
@@ -85,4 +139,55 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn wires_from_duplicated() -> Result<(), Box<dyn std::error::Error>> {
+        let wires = Wires::from_str("bccad")?;
+        assert_eq!(wires.0.iter().map(|w| w.0).collect::<String>(), "abcd");
+
+        Ok(())
+    }
+
+    #[test]
+    fn wires_add_wires() -> Result<(), Box<dyn std::error::Error>> {
+        let wires = Wires::from_str("ba")?;
+        let wires2 = Wires::from_str("ac")?;
+        assert_eq!(wires + wires2, Wires::from_str("abc")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn wires_sub_wires() -> Result<(), Box<dyn std::error::Error>> {
+        let wires = Wires::from_str("abdf")?;
+        let wires2 = Wires::from_str("ac")?;
+        assert_eq!(wires - wires2, Wires::from_str("bdf")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn wires_add_wire() -> Result<(), Box<dyn std::error::Error>> {
+        let wires = Wires::from_str("b")?;
+        let wire = Wire::try_from('a')?;
+        assert_eq!(wires + wire, Wires::from_str("ab")?);
+
+        let wires = Wires::from_str("a")?;
+        let wire = Wire::try_from('a')?;
+        assert_eq!(wires + wire, Wires::from_str("a")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn wires_sub_wire() -> Result<(), Box<dyn std::error::Error>> {
+        let wires = Wires::from_str("abc")?;
+        let wire = Wire::try_from('b')?;
+        assert_eq!(wires - wire, Wires::from_str("ac")?);
+
+        let wires = Wires::from_str("a")?;
+        let wire = Wire::try_from('a')?;
+        assert_eq!(wires - wire, Wires::from_str("")?);
+
+        Ok(())
+    }
 }
