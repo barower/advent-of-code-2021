@@ -1,4 +1,5 @@
 use thiserror::Error;
+use std::fmt;
 use std::str::FromStr;
 use std::ops::{Add, Sub};
 
@@ -13,7 +14,7 @@ pub enum Part2Error {
     ValueNotFound,
 }
 
-#[derive(Eq, PartialEq, Hash, Ord, PartialOrd, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd, Debug)]
 pub struct Wire(char);
 
 impl TryFrom<char> for Wire {
@@ -27,12 +28,16 @@ impl TryFrom<char> for Wire {
     }
 }
 
-#[derive(Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Wires(Vec<Wire>);
 
 impl Wires {
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    pub fn empty() -> Wires {
+        Wires(vec![])
     }
 }
 
@@ -45,6 +50,13 @@ impl FromStr for Wires {
         wires.dedup();
 
         Ok(Wires(wires))
+    }
+}
+
+impl fmt::Display for Wires {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let to_write: String = self.0.iter().map(|ch| ch.0).collect();
+        write!(f, "{}", to_write)
     }
 }
 

@@ -1,4 +1,4 @@
-mod wire;
+pub mod wire;
 
 use wire::*;
 use bimap::BiHashMap;
@@ -23,13 +23,13 @@ impl WireSegmentPositionMap {
         WireSegmentPositionMap(BiHashMap::new())
     }
 
-    //fn add_new_map(&mut self, wires: wire::Wires, val: u8) -> Result<(), Part2Error> {
-    //    self.0.insert_no_overwrite(wires, val).or(Err(Part2Error::DoubleEntry))
-    //}
+    fn add_new_map(&mut self, wire: wire::Wire, pos: SegmentPosition) -> Result<(), Part2Error> {
+        self.0.insert_no_overwrite(wire, pos).or(Err(Part2Error::DoubleEntry))
+    }
 
-    //fn decode(&self, wires: &wire::Wires) -> Result<u8, Part2Error> {
-    //    Ok(*self.0.get_by_left(wires).ok_or(Part2Error::ValueNotFound)?)
-    //}
+    fn wire_from_position(&self, pos: &SegmentPosition) -> Result<wire::Wire, Part2Error> {
+        Ok(*self.0.get_by_right(pos).ok_or(Part2Error::ValueNotFound)?)
+    }
 }
 
 struct BrokenSevenSegmentMap(BiHashMap<wire::Wires, u8>);
@@ -46,6 +46,10 @@ impl BrokenSevenSegmentMap {
     fn decode(&self, wires: &wire::Wires) -> Result<u8, Part2Error> {
         Ok(*self.0.get_by_left(wires).ok_or(Part2Error::ValueNotFound)?)
     }
+
+    fn from_value(&self, value: u8) -> Option<wire::Wires> {
+        self.0.get_by_right(&value).cloned()
+    }
 }
 
 struct SegmentSolver {}
@@ -54,6 +58,7 @@ impl SegmentSolver {
     fn create_map(left: &str) -> Result<BrokenSevenSegmentMap, Part2Error> {
         let mut map = BrokenSevenSegmentMap::new();
 
+        // Find 1, 4, 7 and 8
         for wires in left.trim().split(' ').map(wire::Wires::from_str) {
             let wires = wires?;
             match wires.len() {
@@ -63,6 +68,73 @@ impl SegmentSolver {
                 7 => map.add_new_map(wires, 8)?,
                 _ => {}
             };
+        }
+
+        // Find 6 and 9
+        for wires in left.trim().split(' ').map(wire::Wires::from_str) {
+            let wires = wires?;
+            if map.decode(&wires).is_err() {
+                let four: Wires = map.from_value(4).ok_or(Part2Error::ValueNotFound)?;
+                let seven: Wires = map.from_value(7).ok_or(Part2Error::ValueNotFound)?;
+                let eight: Wires = map.from_value(8).ok_or(Part2Error::ValueNotFound)?;
+
+                // Find 6
+                if (wires.clone() + seven) == eight {
+                    map.add_new_map(wires, 6)?;
+                    continue;
+                }
+
+                // Find 9
+                if (wires.clone() + four) == wires {
+                    map.add_new_map(wires, 9)?;
+                    continue;
+                }
+            }
+        }
+
+        // Find 5
+        for wires in left.trim().split(' ').map(wire::Wires::from_str) {
+            let wires = wires?;
+            if map.decode(&wires).is_err() {
+                let six: Wires = map.from_value(6).ok_or(Part2Error::ValueNotFound)?;
+
+                // Find 5
+                if (wires.clone() - six) == Wires::empty() {
+                    map.add_new_map(wires, 5)?;
+                    continue;
+                }
+            }
+        }
+
+        // Find 3
+        for wires in left.trim().split(' ').map(wire::Wires::from_str) {
+            let wires = wires?;
+            if map.decode(&wires).is_err() {
+                let nine: Wires = map.from_value(9).ok_or(Part2Error::ValueNotFound)?;
+
+                // Find 3
+                if (wires.clone() - nine) == Wires::empty() {
+                    map.add_new_map(wires, 3)?;
+                    continue;
+                }
+            }
+        }
+
+        // Find 2 and 0
+        for wires in left.trim().split(' ').map(wire::Wires::from_str) {
+            let wires = wires?;
+            if map.decode(&wires).is_err() {
+                let three: Wires = map.from_value(3).ok_or(Part2Error::ValueNotFound)?;
+
+                // Find 2
+                if (wires.clone() - three).len() == 1 {
+                    map.add_new_map(wires, 2)?;
+                    continue;
+                } else { // Find 0
+                    map.add_new_map(wires, 0)?;
+                    continue;
+                }
+            }
         }
 
         Ok(map)
@@ -78,6 +150,22 @@ impl SegmentSolver {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wire_segment_add_new_map() -> Result<(), Box<dyn std::error::Error>>{
+
+        let mut wiremap = WireSegmentPositionMap::new();
+        wiremap.add_new_map(wire::Wire::try_from('a')?, SegmentPosition::Up)?;
+
+        assert!(wiremap.add_new_map(wire::Wire::try_from('a')?, SegmentPosition::Up).is_err());
+
+        assert!(wiremap.add_new_map(wire::Wire::try_from('b')?, SegmentPosition::Up).is_err());
+        assert!(wiremap.add_new_map(wire::Wire::try_from('a')?, SegmentPosition::LowerLeft).is_err());
+
+        wiremap.add_new_map(wire::Wire::try_from('b')?, SegmentPosition::Down)?;
+
+        Ok(())
+    }
 
     #[test]
     fn broken_seven_seg_map_add_new_map() -> Result<(), Box<dyn std::error::Error>> {
@@ -110,18 +198,39 @@ mod tests {
     }
 
     #[test]
-    fn segment_solver_create_map() -> Result<(), Box<dyn std::error::Error>> {
+    fn segment_solver1() -> Result<(), Box<dyn std::error::Error>> {
+        let segmap = SegmentSolver::create_map("abcefg cf acdeg acdfg bcdf abdfg abdefg acf abcdefg abcdfg")?;
+
+        assert_eq!(segmap.decode(&wire::Wires::from_str("cf")?)?, 1);
+        assert_eq!(segmap.decode(&wire::Wires::from_str("bcdf")?)?, 4);
+        assert_eq!(segmap.decode(&wire::Wires::from_str("acf")?)?, 7);
+        assert_eq!(segmap.decode(&wire::Wires::from_str("abcdefg")?)?, 8);
+
+        assert_eq!(segmap.decode(&wire::Wires::from_str("abdefg")?)?, 6);
+        assert_eq!(segmap.decode(&wire::Wires::from_str("abcdfg")?)?, 9);
+        assert_eq!(segmap.decode(&wire::Wires::from_str("acdfg")?)?, 3);
+
+        assert_eq!(segmap.decode(&wire::Wires::from_str("abcefg")?)?, 0);
+        assert_eq!(segmap.decode(&wire::Wires::from_str("abdfg")?)?, 5);
+        assert_eq!(segmap.decode(&wire::Wires::from_str("acdeg")?)?, 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn segment_solver_example() -> Result<(), Box<dyn std::error::Error>> {
         let segmap = SegmentSolver::create_map("acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab")?;
 
         assert_eq!(segmap.decode(&wire::Wires::from_str("acedgfb")?)?, 8);
         assert_eq!(segmap.decode(&wire::Wires::from_str("cdfbe")?)?, 5);
         assert_eq!(segmap.decode(&wire::Wires::from_str("gcdfa")?)?, 2);
-        assert_eq!(segmap.decode(&wire::Wires::from_str("fbcad")?)?, 3);
         assert_eq!(segmap.decode(&wire::Wires::from_str("dab")?)?, 7);
         assert_eq!(segmap.decode(&wire::Wires::from_str("cefabd")?)?, 9);
         assert_eq!(segmap.decode(&wire::Wires::from_str("cdfgeb")?)?, 6);
         assert_eq!(segmap.decode(&wire::Wires::from_str("eafb")?)?, 4);
         assert_eq!(segmap.decode(&wire::Wires::from_str("ab")?)?, 1);
+        assert_eq!(segmap.decode(&wire::Wires::from_str("cagedb")?)?, 0);
+        assert_eq!(segmap.decode(&wire::Wires::from_str("fbcad")?)?, 3);
 
         Ok(())
     }
