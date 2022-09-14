@@ -1,38 +1,9 @@
-#![allow(unused)]
-
 pub mod wire;
 
 use wire::*;
 use bimap::BiHashMap;
 use itertools::Itertools;
 use std::str::FromStr;
-
-#[derive(Hash, Eq, PartialEq)]
-enum SegmentPosition {
-    Up,
-    Middle,
-    Down,
-    UpperLeft,
-    UpperRight,
-    LowerLeft,
-    LowerRight,
-}
-
-struct WireSegmentPositionMap(BiHashMap<wire::Wire, SegmentPosition>);
-
-impl WireSegmentPositionMap {
-    fn new() -> Self {
-        WireSegmentPositionMap(BiHashMap::new())
-    }
-
-    fn add_new_map(&mut self, wire: wire::Wire, pos: SegmentPosition) -> Result<(), Part2Error> {
-        self.0.insert_no_overwrite(wire, pos).or(Err(Part2Error::DoubleEntry))
-    }
-
-    fn wire_from_position(&self, pos: &SegmentPosition) -> Result<wire::Wire, Part2Error> {
-        Ok(*self.0.get_by_right(pos).ok_or(Part2Error::ValueNotFound)?)
-    }
-}
 
 struct BrokenSevenSegmentMap(BiHashMap<wire::Wires, u8>);
 
@@ -157,22 +128,6 @@ impl SegmentSolver {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn wire_segment_add_new_map() -> Result<(), Box<dyn std::error::Error>>{
-
-        let mut wiremap = WireSegmentPositionMap::new();
-        wiremap.add_new_map(wire::Wire::try_from('a')?, SegmentPosition::Up)?;
-
-        assert!(wiremap.add_new_map(wire::Wire::try_from('a')?, SegmentPosition::Up).is_err());
-
-        assert!(wiremap.add_new_map(wire::Wire::try_from('b')?, SegmentPosition::Up).is_err());
-        assert!(wiremap.add_new_map(wire::Wire::try_from('a')?, SegmentPosition::LowerLeft).is_err());
-
-        wiremap.add_new_map(wire::Wire::try_from('b')?, SegmentPosition::Down)?;
-
-        Ok(())
-    }
 
     #[test]
     fn broken_seven_seg_map_add_new_map() -> Result<(), Box<dyn std::error::Error>> {
