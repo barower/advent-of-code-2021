@@ -3,7 +3,7 @@ use std::fmt;
 use std::str::FromStr;
 use std::ops::{Add, Sub};
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Part2Error {
     #[error("Parse failure")]

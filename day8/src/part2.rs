@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 pub mod wire;
 
 use wire::*;
@@ -52,7 +54,7 @@ impl BrokenSevenSegmentMap {
     }
 }
 
-struct SegmentSolver {}
+pub struct SegmentSolver {}
 
 impl SegmentSolver {
     fn create_map(left: &str) -> Result<BrokenSevenSegmentMap, Part2Error> {
@@ -140,10 +142,15 @@ impl SegmentSolver {
         Ok(map)
     }
 
-    fn solve_segments(line: &str) -> Result<u64, Part2Error> {
+    pub fn solve_segments(line: &str) -> Result<u64, Part2Error> {
         let (map_input, seg_input) = line.split('|').collect_tuple().ok_or(Part2Error::ParseError("Couldn't parse input line".to_string()))?;
-        let map = SegmentSolver::create_map(map_input);
-        Ok(0)
+        let map = SegmentSolver::create_map(map_input)?;
+        let mut result = 0;
+        for (power, wire) in seg_input.trim().split(' ').rev().enumerate() {
+            let x: u64 = map.decode(&wire::Wires::from_str(wire)?)?.into();
+            result += 10_u64.pow(power.try_into().unwrap()) * x;
+        }
+        Ok(result)
     }
 }
 
@@ -198,7 +205,7 @@ mod tests {
     }
 
     #[test]
-    fn segment_solver1() -> Result<(), Box<dyn std::error::Error>> {
+    fn segment_solver_map_basic() -> Result<(), Box<dyn std::error::Error>> {
         let segmap = SegmentSolver::create_map("abcefg cf acdeg acdfg bcdf abdfg abdefg acf abcdefg abcdfg")?;
 
         assert_eq!(segmap.decode(&wire::Wires::from_str("cf")?)?, 1);
@@ -218,7 +225,7 @@ mod tests {
     }
 
     #[test]
-    fn segment_solver_example() -> Result<(), Box<dyn std::error::Error>> {
+    fn segment_solver_map_example() -> Result<(), Box<dyn std::error::Error>> {
         let segmap = SegmentSolver::create_map("acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab")?;
 
         assert_eq!(segmap.decode(&wire::Wires::from_str("acedgfb")?)?, 8);
@@ -231,6 +238,15 @@ mod tests {
         assert_eq!(segmap.decode(&wire::Wires::from_str("ab")?)?, 1);
         assert_eq!(segmap.decode(&wire::Wires::from_str("cagedb")?)?, 0);
         assert_eq!(segmap.decode(&wire::Wires::from_str("fbcad")?)?, 3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn solve_segments() -> Result<(), Box<dyn std::error::Error>> {
+        assert_eq!(SegmentSolver::solve_segments("acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf"), Ok(5353));
+        assert_eq!(SegmentSolver::solve_segments("be cfbegad cbdgef fgaecd cgeb fdcge agebfd fecdb fabcd edb | fdgacbe cefdb cefbgd gcbe"), Ok(8394));
+        assert_eq!(SegmentSolver::solve_segments("edbfga begcd cbg gc gcadebf fbgde acbgfd abcde gfcbed gfec | fcgedb cgb dgebacf gc"), Ok(9781));
 
         Ok(())
     }
