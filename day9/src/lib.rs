@@ -36,7 +36,7 @@ impl Heatmap {
             None => { return false; },
         };
 
-        for (relx, rely) in [(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (-1, -1), (0, -1), (-1, -1)] {
+        for (relx, rely) in [(0, 1), (-1, 0), (1, 0), (0, -1)] {
             if let Some(neighbour) = self.get_at(x+relx, y+rely) {
                 if candidate >= neighbour {
                     return false;
@@ -130,6 +130,21 @@ mod tests {
 9856789892
 8767896789
 9899965678")?;
+
+        assert_eq!(heatmap.find_low_points(), vec![1, 0, 5, 5]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn heatmap_broken_input() -> Result<(), Box<dyn std::error::Error>> {
+        let heatmap = Heatmap::from_str("2199943210
+3987894921
+9856789892
+8767896789
+9899965678
+
+")?;
 
         assert_eq!(heatmap.find_low_points(), vec![1, 0, 5, 5]);
 
