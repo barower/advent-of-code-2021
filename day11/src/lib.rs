@@ -79,11 +79,11 @@ impl EnergyMap {
         }
     }
 
-    fn width(&self) -> isize {
+    pub fn width(&self) -> isize {
         self.0[0].len().try_into().unwrap()
     }
 
-    fn height(&self) -> isize {
+    pub fn height(&self) -> isize {
         self.0.len().try_into().unwrap()
     }
 }
