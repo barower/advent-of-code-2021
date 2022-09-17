@@ -15,7 +15,7 @@ pub enum Day8Error {
 pub struct EnergyMap(Vec<Vec<u8>>);
 
 impl EnergyMap {
-    pub fn flash(&mut self, (x, y): (isize, isize)) {
+    fn flash(&mut self, (x, y): (isize, isize)) {
         for (relx, rely) in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)] {
             if let Some(energy) = self.get_ref_mut(x+relx, y+rely) {
                 *energy += 1;
@@ -23,7 +23,7 @@ impl EnergyMap {
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> usize {
         // First, the energy level of each octopus increases by 1.
         for (_, line) in self.0.iter_mut().enumerate() {
             for (_, energy) in line.iter_mut().enumerate() {
@@ -64,10 +64,11 @@ impl EnergyMap {
         }
 
         // Finally, any octopus that flashed during this step has its energy level set to 0
-        for (x, y) in all_flashes.into_iter() {
-            self.0[y][x] = 0;
+        for (x, y) in all_flashes.iter() {
+            self.0[*y][*x] = 0;
         }
 
+        all_flashes.len()
     }
 
     pub fn get_ref_mut(&mut self, x: isize, y: isize) -> Option<&mut u8> {
@@ -133,14 +134,14 @@ mod tests {
 19991
 11111").unwrap();
 
-        energymap.step();
+        assert_eq!(energymap.step(), 9);
         assert_eq!(energymap, EnergyMap::from_str("34543
 40004
 50005
 40004
 34543").unwrap());
 
-        energymap.step();
+        assert_eq!(energymap.step(), 0);
         assert_eq!(energymap, EnergyMap::from_str("45654
 51115
 61116
