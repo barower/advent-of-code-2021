@@ -1,4 +1,5 @@
-use day10::{get_part1_score, get_part2_score};
+use day10::part2::get_part2_score;
+use day10::part1::get_part1_score;
 use std::fs::read_to_string;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
