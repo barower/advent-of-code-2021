@@ -59,7 +59,7 @@ impl CaveGraph {
 
         let mut detected_twice_cave = None;
 
-        for small_cave in path.iter().filter(|node| node.to_lowercase() == **node) {
+        for small_cave in path.iter().filter(|node| node.chars().all(char::is_lowercase)) {
             match path.iter().filter(|cave| *cave == small_cave).count() {
                 1 => {},
                 2 if detected_twice_cave == None => { detected_twice_cave = Some(small_cave); },
@@ -82,12 +82,13 @@ impl CaveGraph {
                     continue;
                 }
 
-                let mut new_path = path.clone();
-                new_path.push(next_node.to_string());
-
-                if variant == PathsVariant::OneSmallCaveTwice && Self::is_one_small_visited_more_than_twice(&new_path) {
+                if variant == PathsVariant::OneSmallCaveTwice && Self::is_one_small_visited_more_than_twice( &path) {
                     continue;
                 }
+
+                let mut new_path = Vec::with_capacity(path.len()+1);
+                new_path.clone_from(&path);
+                new_path.push(next_node.to_string());
 
                 if next_node == END_NODE {
                     results.insert(new_path);
@@ -193,13 +194,13 @@ mod tests {
     fn test_find_all_paths_two_caves_connected() -> Result<(), Box<dyn std::error::Error>> {
         let mut graph = CaveGraph::default();
         graph.add_entry("start-A")?;
-        graph.add_entry("A-B")?;
+        graph.add_entry("A-b")?;
         graph.add_entry("end-A")?;
-        graph.add_entry("end-B")?;
+        graph.add_entry("end-b")?;
 
         assert_eq!(graph.paths(PathsVariant::AllSmallCavesOnce), Ok(HashSet::from([vec!["start", "A", "end"].into_iter().map(str::to_string).collect(),
-                                                 vec!["start", "A", "B", "end"].into_iter().map(str::to_string).collect(),
-                                                 vec!["start", "A", "B", "A", "end"].into_iter().map(str::to_string).collect()])));
+                                                 vec!["start", "A", "b", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "A", "b", "A", "end"].into_iter().map(str::to_string).collect()])));
 
         Ok(())
     }

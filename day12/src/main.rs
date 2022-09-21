@@ -1,6 +1,10 @@
 use day12::{CaveGraph, PathsVariant};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use tikv_jemallocator::Jemalloc;
+
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut graph = CaveGraph::default();
