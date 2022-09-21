@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use thiserror::Error;
-use std::thread::sleep_ms;
 
 #[derive(Debug, Error, PartialEq, Eq)]
 #[non_exhaustive]
@@ -17,6 +16,7 @@ const END_NODE: &str = "end";
 #[derive(Default, Debug, Clone)]
 pub struct CaveGraph(HashMap<String, Vec<String>>);
 
+#[derive(PartialEq, Eq)]
 pub enum PathsVariant {
     AllSmallCavesOnce,
     OneSmallCaveTwice,
@@ -56,57 +56,43 @@ impl CaveGraph {
     }
 
     fn is_one_small_visited_more_than_twice(path: &Vec<String>) -> bool {
-        let mut deduped_path = path.clone();
-        deduped_path.dedup();
 
-        let mut detected_twice = false;
+        let mut detected_twice_cave = None;
 
-        for small_cave in deduped_path.into_iter().filter(|node| node.to_lowercase() == *node) {
-            match path.iter().filter(|cave| **cave == small_cave).count() {
+        for small_cave in path.iter().filter(|node| node.to_lowercase() == **node) {
+            match path.iter().filter(|cave| *cave == small_cave).count() {
                 1 => {},
-                2 => if !detected_twice { detected_twice = true; }
+                2 if detected_twice_cave == None => { detected_twice_cave = Some(small_cave); },
+                2 if detected_twice_cave == Some(small_cave) => {},
                 _ => { return true; }
             }
         }
         false
     }
 
-
     pub fn paths(&self, variant: PathsVariant) -> Result<HashSet<Vec<String>>, CaveGraphError> {
         let mut results = HashSet::new();
-        let mut fifo: VecDeque<(Vec<String>, Self)> = VecDeque::from([
-            (vec![START_NODE.to_string()], self.clone())
-        ]);
+        let mut fifo: VecDeque<Vec<String>> = VecDeque::from([vec![START_NODE.to_string()]]);
 
-        while let Some((path, unvisited)) = fifo.pop_back() {
+        while let Some(path) = fifo.pop_back() {
             let last_node = path.last().ok_or(CaveGraphError::MissingNode)?;
-            let next_nodes = unvisited.0.get(last_node).ok_or(CaveGraphError::MissingNode)?;
-            for (i, next_node) in next_nodes.iter().enumerate() {
+            let next_nodes = self.0.get(last_node).ok_or(CaveGraphError::MissingNode)?;
+            for next_node in next_nodes.iter() {
+                if variant == PathsVariant::AllSmallCavesOnce && Self::is_small_cave_visited_twice(next_node, &path) {
+                    continue;
+                }
 
                 let mut new_path = path.clone();
                 new_path.push(next_node.to_string());
 
-                match variant {
-                    PathsVariant::AllSmallCavesOnce => {
-                        if Self::is_small_cave_visited_twice(next_node, &path) {
-                            continue;
-                        }
-                    },
-                    PathsVariant::OneSmallCaveTwice => {
-                        if Self::is_one_small_visited_more_than_twice(&new_path) {
-                            continue;
-                        }
-                    },
+                if variant == PathsVariant::OneSmallCaveTwice && Self::is_one_small_visited_more_than_twice(&new_path) {
+                    continue;
                 }
-
-                let mut new_unvisited = unvisited.clone();
-                let temp = new_unvisited.0.get_mut(last_node).ok_or(CaveGraphError::MissingNode)?;
-                temp.remove(i);
 
                 if next_node == END_NODE {
                     results.insert(new_path);
                 } else {
-                    fifo.push_front((new_path, new_unvisited));
+                    fifo.push_front(new_path);
                 }
             }
         }
@@ -239,6 +225,8 @@ mod tests {
                                                  vec!["start", "b", "A", "c", "A", "end"].into_iter().map(str::to_string).collect(),
                                                  vec!["start", "b", "A", "end"].into_iter().map(str::to_string).collect(),
                                                  vec!["start", "b", "end"].into_iter().map(str::to_string).collect()])));
+
+        assert_eq!(graph.paths(PathsVariant::OneSmallCaveTwice)?.len(), 36);
 
         Ok(())
     }
