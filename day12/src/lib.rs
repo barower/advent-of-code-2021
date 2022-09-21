@@ -17,6 +17,11 @@ const END_NODE: &str = "end";
 #[derive(Default, Debug, Clone)]
 pub struct CaveGraph(HashMap<String, Vec<String>>);
 
+pub enum PathsVariant {
+    AllSmallCavesOnce,
+    OneSmallCaveTwice,
+}
+
 impl CaveGraph {
     fn add_edge(&mut self, from: String, to: String) {
         if let Some(neighbours) = self.0.get_mut(&from) {
@@ -50,10 +55,27 @@ impl CaveGraph {
         }
     }
 
-    pub fn paths(self) -> Result<HashSet<Vec<String>>, CaveGraphError> {
+    fn is_one_small_visited_more_than_twice(path: &Vec<String>) -> bool {
+        let mut deduped_path = path.clone();
+        deduped_path.dedup();
+
+        let mut detected_twice = false;
+
+        for small_cave in deduped_path.into_iter().filter(|node| node.to_lowercase() == *node) {
+            match path.iter().filter(|cave| **cave == small_cave).count() {
+                1 => {},
+                2 => if !detected_twice { detected_twice = true; }
+                _ => { return true; }
+            }
+        }
+        false
+    }
+
+
+    pub fn paths(&self, variant: PathsVariant) -> Result<HashSet<Vec<String>>, CaveGraphError> {
         let mut results = HashSet::new();
         let mut fifo: VecDeque<(Vec<String>, Self)> = VecDeque::from([
-            (vec![START_NODE.to_string()], self)
+            (vec![START_NODE.to_string()], self.clone())
         ]);
 
         while let Some((path, unvisited)) = fifo.pop_back() {
@@ -61,16 +83,25 @@ impl CaveGraph {
             let next_nodes = unvisited.0.get(last_node).ok_or(CaveGraphError::MissingNode)?;
             for (i, next_node) in next_nodes.iter().enumerate() {
 
-                if Self::is_small_cave_visited_twice(next_node, &path) {
-                    continue;
+                let mut new_path = path.clone();
+                new_path.push(next_node.to_string());
+
+                match variant {
+                    PathsVariant::AllSmallCavesOnce => {
+                        if Self::is_small_cave_visited_twice(next_node, &path) {
+                            continue;
+                        }
+                    },
+                    PathsVariant::OneSmallCaveTwice => {
+                        if Self::is_one_small_visited_more_than_twice(&new_path) {
+                            continue;
+                        }
+                    },
                 }
 
                 let mut new_unvisited = unvisited.clone();
                 let temp = new_unvisited.0.get_mut(last_node).ok_or(CaveGraphError::MissingNode)?;
                 temp.remove(i);
-
-                let mut new_path = path.clone();
-                new_path.push(next_node.to_string());
 
                 if next_node == END_NODE {
                     results.insert(new_path);
@@ -141,7 +172,7 @@ mod tests {
         let mut graph = CaveGraph::default();
         graph.add_entry("start-end")?;
 
-        assert_eq!(graph.paths(), Ok(HashSet::from([vec!["start", "end"].into_iter().map(str::to_string).collect()])));
+        assert_eq!(graph.paths(PathsVariant::AllSmallCavesOnce), Ok(HashSet::from([vec!["start", "end"].into_iter().map(str::to_string).collect()])));
 
         Ok(())
     }
@@ -152,7 +183,7 @@ mod tests {
         graph.add_entry("start-A")?;
         graph.add_entry("end-A")?;
 
-        assert_eq!(graph.paths(), Ok(HashSet::from([vec!["start", "A", "end"].into_iter().map(str::to_string).collect()])));
+        assert_eq!(graph.paths(PathsVariant::AllSmallCavesOnce), Ok(HashSet::from([vec!["start", "A", "end"].into_iter().map(str::to_string).collect()])));
 
         Ok(())
     }
@@ -166,7 +197,7 @@ mod tests {
         graph.add_entry("start-B")?;
         graph.add_entry("end-B")?;
 
-        assert_eq!(graph.paths(), Ok(HashSet::from([vec!["start", "A", "end"].into_iter().map(str::to_string).collect(),
+        assert_eq!(graph.paths(PathsVariant::AllSmallCavesOnce), Ok(HashSet::from([vec!["start", "A", "end"].into_iter().map(str::to_string).collect(),
                                                  vec!["start", "B", "end"].into_iter().map(str::to_string).collect()])));
 
         Ok(())
@@ -180,7 +211,7 @@ mod tests {
         graph.add_entry("end-A")?;
         graph.add_entry("end-B")?;
 
-        assert_eq!(graph.paths(), Ok(HashSet::from([vec!["start", "A", "end"].into_iter().map(str::to_string).collect(),
+        assert_eq!(graph.paths(PathsVariant::AllSmallCavesOnce), Ok(HashSet::from([vec!["start", "A", "end"].into_iter().map(str::to_string).collect(),
                                                  vec!["start", "A", "B", "end"].into_iter().map(str::to_string).collect(),
                                                  vec!["start", "A", "B", "A", "end"].into_iter().map(str::to_string).collect()])));
 
@@ -198,7 +229,7 @@ mod tests {
         graph.add_entry("A-end")?;
         graph.add_entry("b-end")?;
 
-        assert_eq!(graph.paths(), Ok(HashSet::from([vec!["start", "A", "b", "A", "c", "A", "end"].into_iter().map(str::to_string).collect(),
+        assert_eq!(graph.paths(PathsVariant::AllSmallCavesOnce), Ok(HashSet::from([vec!["start", "A", "b", "A", "c", "A", "end"].into_iter().map(str::to_string).collect(),
                                                  vec!["start", "A", "b", "A", "end"].into_iter().map(str::to_string).collect(),
                                                  vec!["start", "A", "b", "end"].into_iter().map(str::to_string).collect(),
                                                  vec!["start", "A", "c", "A", "b", "A", "end"].into_iter().map(str::to_string).collect(),
@@ -226,7 +257,7 @@ mod tests {
         graph.add_entry("kj-HN")?;
         graph.add_entry("kj-dc")?;
 
-        assert_eq!(graph.paths()?.len(), 19);
+        assert_eq!(graph.paths(PathsVariant::AllSmallCavesOnce)?.len(), 19);
 
         Ok(())
     }
@@ -253,7 +284,7 @@ mod tests {
         graph.add_entry("pj-fs")?;
         graph.add_entry("start-RW")?;
 
-        assert_eq!(graph.paths()?.len(), 226);
+        assert_eq!(graph.paths(PathsVariant::AllSmallCavesOnce)?.len(), 226);
 
         Ok(())
     }
