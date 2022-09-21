@@ -1,24 +1,30 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use thiserror::Error;
+use std::thread::sleep_ms;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum CaveGraphError {
     #[error("Parsing failure")]
     ParseError,
+    #[error("Missing node")]
+    MissingNode,
 }
 
-#[derive(Default)]
+const START_NODE: &str = "start";
+const END_NODE: &str = "end";
+
+#[derive(Default, Debug, Clone)]
 pub struct CaveGraph(HashMap<String, Vec<String>>);
 
 impl CaveGraph {
     fn add_edge(&mut self, from: String, to: String) {
         if let Some(neighbours) = self.0.get_mut(&from) {
-            if to != "start" && from != "end" {
+            if to != START_NODE && from != END_NODE {
                 neighbours.push(to);
             }
         } else {
-            if to != "start" && from != "end" {
+            if to != START_NODE && from != END_NODE {
                 self.0.insert(from, vec![to]);
             }
         }
@@ -36,8 +42,45 @@ impl CaveGraph {
         Ok(())
     }
 
-    pub fn paths(self) -> HashSet<Vec<&'static str>> {
-        todo!()
+    fn is_small_cave_visited_twice(candidate: &String, path: &Vec<String>) -> bool {
+        if candidate.to_lowercase() != *candidate {
+            false
+        } else {
+            path.contains(candidate)
+        }
+    }
+
+    pub fn paths(self) -> Result<HashSet<Vec<String>>, CaveGraphError> {
+        let mut results = HashSet::new();
+        let mut fifo: VecDeque<(Vec<String>, Self)> = VecDeque::from([
+            (vec![START_NODE.to_string()], self)
+        ]);
+
+        while let Some((path, unvisited)) = fifo.pop_back() {
+            let last_node = path.last().ok_or(CaveGraphError::MissingNode)?;
+            let next_nodes = unvisited.0.get(last_node).ok_or(CaveGraphError::MissingNode)?;
+            for (i, next_node) in next_nodes.iter().enumerate() {
+
+                if Self::is_small_cave_visited_twice(next_node, &path) {
+                    continue;
+                }
+
+                let mut new_unvisited = unvisited.clone();
+                let temp = new_unvisited.0.get_mut(last_node).ok_or(CaveGraphError::MissingNode)?;
+                temp.remove(i);
+
+                let mut new_path = path.clone();
+                new_path.push(next_node.to_string());
+
+                if next_node == END_NODE {
+                    results.insert(new_path);
+                } else {
+                    fifo.push_front((new_path, new_unvisited));
+                }
+            }
+        }
+
+        Ok(results)
     }
 }
 
@@ -94,6 +137,57 @@ mod tests {
     }
 
     #[test]
+    fn test_find_all_paths_start_to_end() -> Result<(), Box<dyn std::error::Error>> {
+        let mut graph = CaveGraph::default();
+        graph.add_entry("start-end")?;
+
+        assert_eq!(graph.paths(), Ok(HashSet::from([vec!["start", "end"].into_iter().map(str::to_string).collect()])));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_find_all_paths_single_cave() -> Result<(), Box<dyn std::error::Error>> {
+        let mut graph = CaveGraph::default();
+        graph.add_entry("start-A")?;
+        graph.add_entry("end-A")?;
+
+        assert_eq!(graph.paths(), Ok(HashSet::from([vec!["start", "A", "end"].into_iter().map(str::to_string).collect()])));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_find_all_paths_two_caves() -> Result<(), Box<dyn std::error::Error>> {
+        let mut graph = CaveGraph::default();
+        graph.add_entry("start-A")?;
+        graph.add_entry("end-A")?;
+
+        graph.add_entry("start-B")?;
+        graph.add_entry("end-B")?;
+
+        assert_eq!(graph.paths(), Ok(HashSet::from([vec!["start", "A", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "B", "end"].into_iter().map(str::to_string).collect()])));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_find_all_paths_two_caves_connected() -> Result<(), Box<dyn std::error::Error>> {
+        let mut graph = CaveGraph::default();
+        graph.add_entry("start-A")?;
+        graph.add_entry("A-B")?;
+        graph.add_entry("end-A")?;
+        graph.add_entry("end-B")?;
+
+        assert_eq!(graph.paths(), Ok(HashSet::from([vec!["start", "A", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "A", "B", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "A", "B", "A", "end"].into_iter().map(str::to_string).collect()])));
+
+        Ok(())
+    }
+
+    #[test]
     fn test_find_all_paths() -> Result<(), Box<dyn std::error::Error>> {
         let mut graph = CaveGraph::default();
         graph.add_entry("start-A")?;
@@ -104,15 +198,62 @@ mod tests {
         graph.add_entry("A-end")?;
         graph.add_entry("b-end")?;
 
-        assert_eq!(graph.paths(), HashSet::from([vec!["start", "A", "b", "A", "c", "A", "end"],
-                                                 vec!["start", "A", "b", "A", "end"],
-                                                 vec!["start", "A", "b", "end"],
-                                                 vec!["start", "A", "c", "A", "b", "A", "end"],
-                                                 vec!["start", "A", "c", "A", "b", "end"],
-                                                 vec!["start", "A", "c", "A", "end"],
-                                                 vec!["start", "A", "end"],
-                                                 vec!["start", "b", "A", "end"],
-                                                 vec!["start", "b", "end"]]));
+        assert_eq!(graph.paths(), Ok(HashSet::from([vec!["start", "A", "b", "A", "c", "A", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "A", "b", "A", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "A", "b", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "A", "c", "A", "b", "A", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "A", "c", "A", "b", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "A", "c", "A", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "A", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "b", "A", "c", "A", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "b", "A", "end"].into_iter().map(str::to_string).collect(),
+                                                 vec!["start", "b", "end"].into_iter().map(str::to_string).collect()])));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_find_all_paths_2() -> Result<(), Box<dyn std::error::Error>> {
+        let mut graph = CaveGraph::default();
+        graph.add_entry("dc-end")?;
+        graph.add_entry("HN-start")?;
+        graph.add_entry("start-kj")?;
+        graph.add_entry("dc-start")?;
+        graph.add_entry("dc-HN")?;
+        graph.add_entry("LN-dc")?;
+        graph.add_entry("HN-end")?;
+        graph.add_entry("kj-sa")?;
+        graph.add_entry("kj-HN")?;
+        graph.add_entry("kj-dc")?;
+
+        assert_eq!(graph.paths()?.len(), 19);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_find_all_paths_3() -> Result<(), Box<dyn std::error::Error>> {
+        let mut graph = CaveGraph::default();
+        graph.add_entry("fs-end")?;
+        graph.add_entry("he-DX")?;
+        graph.add_entry("fs-he")?;
+        graph.add_entry("start-DX")?;
+        graph.add_entry("pj-DX")?;
+        graph.add_entry("end-zg")?;
+        graph.add_entry("zg-sl")?;
+        graph.add_entry("zg-pj")?;
+        graph.add_entry("pj-he")?;
+        graph.add_entry("RW-he")?;
+        graph.add_entry("fs-DX")?;
+        graph.add_entry("pj-RW")?;
+        graph.add_entry("zg-RW")?;
+        graph.add_entry("start-pj")?;
+        graph.add_entry("he-WI")?;
+        graph.add_entry("zg-he")?;
+        graph.add_entry("pj-fs")?;
+        graph.add_entry("start-RW")?;
+
+        assert_eq!(graph.paths()?.len(), 226);
 
         Ok(())
     }
