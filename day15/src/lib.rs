@@ -25,6 +25,10 @@ impl RiskMap {
         let mut next_point = Some(from);
 
         while let Some(point) = next_point {
+            if point == to {
+                break;
+            }
+
             let current_weight = {
                 if let Weight::NonInf(weight) = dijkstra_map.get_weight(point) {
                     weight
